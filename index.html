@@ -20,6 +20,7 @@
     .controls {
       display: flex;
       justify-content: center;
+      align-items: center;
       margin: 20px 0;
       gap: 20px;
       width: 100%;
@@ -44,28 +45,66 @@
     .button:active {
       transform: scale(0.98);
     }
-    #drop-area {
-      text-align: center;
-      width: 300px;
-      cursor: pointer;
-    }
     canvas {
       border: 1px solid #6200ea;
       border-radius: 8px;
       background-color: #fff;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
-    .instructions {
-      font-size: 14px;
-      color: #666;
-      margin-top: 10px;
+    #drop-area {
+      text-align: center;
+      width: 300px;
+      cursor: pointer;
     }
-    label {
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
       display: flex;
       align-items: center;
     }
-    input[type="checkbox"] {
-      margin-left: 8px;
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 26px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #6200ea;
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    .toggle-label {
+      font-size: 16px;
+	  font-weight: bold;
+      color: #333;
     }
   </style>
 </head>
@@ -74,7 +113,13 @@
   <div class="controls">
     <button class="button" onclick="clearCanvas()">Очистити</button>
     <div id="drop-area" onclick="selectImage()">Перетягніть зображення сюди або натисніть, щоб вибрати</div>
-    <label><input type="checkbox" id="resizeCheckbox" onclick="toggleResize()"> 2К</label>
+    <div class="toggle-container">
+      <label class="toggle-switch">
+        <input type="checkbox" id="resizeCheckbox" onclick="toggleResize()">
+        <span class="slider"></span>
+      </label>
+      <span class="toggle-label">2К</span>
+    </div>
   </div>
 
   <canvas id="canvas" width="1200" height="800"></canvas>
