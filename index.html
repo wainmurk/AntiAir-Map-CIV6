@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="favicon.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мапа ППО CIV6</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+      flex-wrap: wrap;
+    }
+    .button, #drop-area {
+      background-color: #6200ea;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+    .button:hover, #drop-area:hover {
+      background-color: #3700b3;
+      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+    }
+    .button:active {
+      transform: scale(0.98);
+    }
+    #drop-area {
+      text-align: center;
+      width: 300px;
+      cursor: pointer;
+    }
+    canvas {
+      border: 1px solid #6200ea;
+      border-radius: 8px;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .instructions {
+      font-size: 14px;
+      color: #666;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <button class="button" onclick="clearCanvas()">Очистити</button>
+    <div id="drop-area" onclick="selectImage()">Перетягніть зображення сюди або натисніть, щоб вибрати</div>
+  </div>
+
+  <canvas id="canvas" width="1200" height="800"></canvas>
+
+  <div class="instructions">1. Виберіть або перетягніть зображення на полотно.</div>
+  <div class="instructions">2. Малюйте зони, натискаючи ЛКМ.</div>
+  <div class="instructions">3. Видаляйте зони натискаючи ПКМ.</div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const hexWidth = 80;
+    const hexHeight = 60;
+    const hexCenters = [];
+    let img = new Image();
+    let imageLoaded = false;
+
+    // Функция для рисования шестиугольника
+    function drawHexagon(x, y, width, height, alpha) {
+      const angle = Math.PI / 3;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const px = x + Math.cos(angle * i - Math.PI / 6) * width / 2;
+        const py = y + Math.sin(angle * i - Math.PI / 6) * height / 2;
+        if (i === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.closePath();
+      ctx.fillStyle = `rgba(255, 0, 0, ${alpha / 255})`;
+      ctx.fill();
+    }
+
+    // Функция для рисования группы шестиугольников
+    function drawHexagonGroup(x, y) {
+      const horizontalOffset = hexWidth * 0.435;
+      const verticalOffset = hexHeight * 0.75;
+
+      drawHexagon(x, y, hexWidth, hexHeight, 80);
+
+      drawHexagon(x - horizontalOffset, y - verticalOffset, hexWidth, hexHeight, 80);
+      drawHexagon(x + horizontalOffset, y - verticalOffset, hexWidth, hexHeight, 80);
+      drawHexagon(x - horizontalOffset, y + verticalOffset, hexWidth, hexHeight, 80);
+      drawHexagon(x + horizontalOffset, y + verticalOffset, hexWidth, hexHeight, 80);
+      drawHexagon(x - horizontalOffset * 2, y, hexWidth, hexHeight, 80);
+      drawHexagon(x + horizontalOffset * 2, y, hexWidth, hexHeight, 80);
+    }
+
+    // Функция для обновления слоя с шестиугольниками
+    function updateHexLayer() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (imageLoaded) {
+        // Отображаем изображение в исходных размерах
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+      }
+      for (const center of hexCenters) {
+        drawHexagonGroup(center.x, center.y);
+      }
+    }
+
+    // Функция для обработки события "выбора изображения"
+    function selectImage() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            img.src = reader.result;
+            img.onload = () => {
+              imageLoaded = true;
+              updateHexLayer();
+            };
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    }
+
+    // Функция для расчета расстояния между точками
+    function dist(x1, y1, x2, y2) {
+      return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+    }
+
+    // Проверка, попадает ли клик в шестиугольник
+    function isMouseInsideHex(x, y, mouseX, mouseY) {
+      const horizontalOffset = hexWidth * 0.435;
+      const verticalOffset = hexHeight * 0.75;
+
+      const hexagonCenters = [
+        { x, y },
+        { x: x - horizontalOffset, y: y - verticalOffset },
+        { x: x + horizontalOffset, y: y - verticalOffset },
+        { x: x - horizontalOffset, y: y + verticalOffset },
+        { x: x + horizontalOffset, y: y + verticalOffset },
+        { x: x - horizontalOffset * 2, y },
+        { x: x + horizontalOffset * 2, y },
+      ];
+
+      // Проверка попадания в один из шестиугольников
+      for (const center of hexagonCenters) {
+        if (dist(mouseX, mouseY, center.x, center.y) < hexWidth / 2) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Обработчик кликов на канвасе
+    canvas.addEventListener('mousedown', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+
+      if (event.button === 0) { // ЛКМ
+        if (imageLoaded) {
+          hexCenters.push({ x: mouseX, y: mouseY });
+          updateHexLayer();
+        }
+      }
+    });
+
+    // Обработчик правого клика на канвасе (удаление фигуры)
+    canvas.addEventListener('contextmenu', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+
+      // Отменяем стандартное контекстное меню
+      event.preventDefault();
+
+      for (let i = hexCenters.length - 1; i >= 0; i--) {
+        const center = hexCenters[i];
+        if (isMouseInsideHex(center.x, center.y, mouseX, mouseY)) {
+          hexCenters.splice(i, 1); // Удаление фигуры
+          updateHexLayer();
+          break;
+        }
+      }
+    });
+
+    // Функция для очистки канваса
+    function clearCanvas() {
+      hexCenters.length = 0; // Очищаем массив с центрами шестиугольников
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Очищаем канвас
+      if (imageLoaded) {
+        ctx.drawImage(img, 0, 0, img.width, img.height); // Перерисовываем изображение в исходных размерах
+      }
+    }
+
+    // Обработчик события для перетаскивания
+    const dropArea = document.getElementById('drop-area');
+    dropArea.addEventListener('dragover', (event) => {
+      event.preventDefault(); // Разрешаем перетаскивание
+    });
+
+    dropArea.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const file = event.dataTransfer.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          img.src = reader.result;
+          img.onload = () => {
+            imageLoaded = true;
+            updateHexLayer();
+          };
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Обработчик вставки через Ctrl+V
+    window.addEventListener('paste', (event) => {
+      const items = event.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') === 0) {
+          const file = item.getAsFile();
+          const reader = new FileReader();
+          reader.onload = () => {
+            img.src = reader.result;
+            img.onload = () => {
+              imageLoaded = true;
+              updateHexLayer();
+            };
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    });
+
+  </script>
+
+</body>
+</html>
