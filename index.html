@@ -60,6 +60,13 @@
       color: #666;
       margin-top: 10px;
     }
+    label {
+      display: flex;
+      align-items: center;
+    }
+    input[type="checkbox"] {
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
@@ -67,6 +74,7 @@
   <div class="controls">
     <button class="button" onclick="clearCanvas()">Очистити</button>
     <div id="drop-area" onclick="selectImage()">Перетягніть зображення сюди або натисніть, щоб вибрати</div>
+    <label><input type="checkbox" id="resizeCheckbox" onclick="toggleResize()"> 2К</label>
   </div>
 
   <canvas id="canvas" width="1200" height="800"></canvas>
@@ -83,6 +91,8 @@
     const hexCenters = [];
     let img = new Image();
     let imageLoaded = false;
+    let originalImageWidth, originalImageHeight;  // Сохраняем оригинальные размеры изображения
+    let resizeImage = false;  // Флаг для сжатия изображения
 
     // Функция для рисования шестиугольника
     function drawHexagon(x, y, width, height, alpha) {
@@ -121,8 +131,9 @@
     function updateHexLayer() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (imageLoaded) {
-        // Отображаем изображение в исходных размерах
-        ctx.drawImage(img, 0, 0, img.width, img.height);
+        const width = resizeImage ? originalImageWidth * 0.75 : originalImageWidth;  // Применяем сжатие
+        const height = resizeImage ? originalImageHeight * 0.75 : originalImageHeight;  // Применяем сжатие
+        ctx.drawImage(img, 0, 0, width, height);
       }
       for (const center of hexCenters) {
         drawHexagonGroup(center.x, center.y);
@@ -141,6 +152,8 @@
           reader.onload = () => {
             img.src = reader.result;
             img.onload = () => {
+              originalImageWidth = img.width;
+              originalImageHeight = img.height;
               imageLoaded = true;
               updateHexLayer();
             };
@@ -218,8 +231,16 @@
       hexCenters.length = 0; // Очищаем массив с центрами шестиугольников
       ctx.clearRect(0, 0, canvas.width, canvas.height); // Очищаем канвас
       if (imageLoaded) {
-        ctx.drawImage(img, 0, 0, img.width, img.height); // Перерисовываем изображение в исходных размерах
+        const width = resizeImage ? originalImageWidth * 0.75 : originalImageWidth;
+        const height = resizeImage ? originalImageHeight * 0.75 : originalImageHeight;
+        ctx.drawImage(img, 0, 0, width, height); // Перерисовываем изображение в нужном масштабе
       }
+    }
+
+    // Функция для включения/выключения сжатия изображения
+    function toggleResize() {
+      resizeImage = document.getElementById('resizeCheckbox').checked;
+      updateHexLayer();
     }
 
     // Обработчик события для перетаскивания
@@ -236,6 +257,8 @@
         reader.onload = () => {
           img.src = reader.result;
           img.onload = () => {
+            originalImageWidth = img.width;
+            originalImageHeight = img.height;
             imageLoaded = true;
             updateHexLayer();
           };
@@ -255,16 +278,16 @@
           reader.onload = () => {
             img.src = reader.result;
             img.onload = () => {
+              originalImageWidth = img.width;
+              originalImageHeight = img.height;
               imageLoaded = true;
               updateHexLayer();
             };
           };
           reader.readAsDataURL(file);
-          break;
         }
       }
     });
-
   </script>
 
 </body>
